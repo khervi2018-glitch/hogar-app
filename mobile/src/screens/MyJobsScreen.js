@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,46 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { getMyJobs } from '../services/jobsService';
+import { colors, spacing, radius, fontSize } from '../theme/colors';
+import { getCategoryIcon } from '../theme/categoryIcons';
 
 // Color e icono para cada estado del job
 const ESTADOS = {
-  pendiente: { color: '#f59e0b', bg: '#fef3c7', label: 'Pendiente', icon: '⏳' },
-  aceptado: { color: '#3b82f6', bg: '#dbeafe', label: 'Aceptado', icon: '👍' },
-  en_progreso: { color: '#8b5cf6', bg: '#ede9fe', label: 'En progreso', icon: '🔧' },
-  finalizado: { color: '#10b981', bg: '#d1fae5', label: 'Finalizado', icon: '✅' },
-  cancelado: { color: '#ef4444', bg: '#fee2e2', label: 'Cancelado', icon: '❌' },
+  pendiente:   { label: 'Pendiente',   icon: 'time-outline',             color: colors.warning, bg: colors.warningSoft },
+  aceptado:    { label: 'Aceptado',    icon: 'thumbs-up-outline',        color: colors.info,    bg: colors.infoSoft },
+  en_progreso: { label: 'En progreso', icon: 'construct-outline',        color: '#8b5cf6',      bg: '#ede9fe' },
+  finalizado:  { label: 'Finalizado',  icon: 'checkmark-circle-outline', color: colors.success, bg: colors.successSoft },
+  cancelado:   { label: 'Cancelado',   icon: 'close-circle-outline',     color: colors.danger,  bg: colors.dangerSoft },
 };
+
+const ACTIVOS = ['pendiente', 'aceptado', 'en_progreso'];
+
+const FILTROS = [
+  { key: 'todos',     label: 'Todos' },
+  { key: 'activos',   label: 'Activos' },
+  { key: 'historial', label: 'Historial' },
+];
+
+function cumpleFiltro(job, filtro) {
+  if (filtro === 'activos') return ACTIVOS.includes(job.estado);
+  if (filtro === 'historial') return !ACTIVOS.includes(job.estado);
+  return true;
+}
+
+function formatearFecha(valor) {
+  if (!valor) return null;
+  const fecha = new Date(valor);
+  if (isNaN(fecha.getTime())) return null;
+  return fecha.toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+}
 
 export default function MyJobsScreen({ navigation }) {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [filtro, setFiltro] = useState('todos');
 
   async function loadJobs() {
     try {
@@ -35,6 +61,12 @@ export default function MyJobsScreen({ navigation }) {
     }
   }
 
+  async function onRefresh() {
+    setRefreshing(true);
+    await loadJobs();
+    setRefreshing(false);
+  }
+
   // Recarga cada vez que la pantalla gana foco (ej: al volver de crear un job)
   useFocusEffect(
     useCallback(() => {
@@ -42,21 +74,43 @@ export default function MyJobsScreen({ navigation }) {
     }, []),
   );
 
+  const conteos = useMemo(
+    () => ({
+      todos: jobs.length,
+      activos: jobs.filter((j) => cumpleFiltro(j, 'activos')).length,
+      historial: jobs.filter((j) => cumpleFiltro(j, 'historial')).length,
+    }),
+    [jobs],
+  );
+
+  const jobsFiltrados = useMemo(
+    () => jobs.filter((j) => cumpleFiltro(j, filtro)),
+    [jobs, filtro],
+  );
+
   function renderJob({ item }) {
     const estado = ESTADOS[item.estado] ?? ESTADOS.pendiente;
+    const { icon, color } = getCategoryIcon(item.categoria?.nombre);
+    const tecnico = item.tecnico?.user?.nombre ?? 'Técnico';
+    const fecha = formatearFecha(item.createdAt);
 
     return (
       <TouchableOpacity
         style={styles.card}
+        activeOpacity={0.85}
         onPress={() => navigation.navigate('JobDetail', { jobId: item.id })}
       >
         <View style={styles.cardTop}>
-          <Text style={styles.category}>
-            {item.categoria?.icono} {item.categoria?.nombre}
+          <View style={[styles.catIcon, { backgroundColor: color + '1A' }]}>
+            <Ionicons name={icon} size={20} color={color} />
+          </View>
+          <Text style={styles.category} numberOfLines={1}>
+            {item.categoria?.nombre ?? 'Servicio'}
           </Text>
           <View style={[styles.badge, { backgroundColor: estado.bg }]}>
+            <Ionicons name={estado.icon} size={13} color={estado.color} />
             <Text style={[styles.badgeText, { color: estado.color }]}>
-              {estado.icon} {estado.label}
+              {estado.label}
             </Text>
           </View>
         </View>
@@ -65,9 +119,19 @@ export default function MyJobsScreen({ navigation }) {
           {item.descripcion}
         </Text>
 
-        <Text style={styles.technician}>
-          🛠️ {item.tecnico?.user?.nombre ?? 'Técnico'}
-        </Text>
+        <View style={styles.cardBottom}>
+          <View style={styles.miniAvatar}>
+            <Text style={styles.miniAvatarText}>{tecnico.charAt(0).toUpperCase()}</Text>
+          </View>
+          <Text style={styles.technician} numberOfLines={1}>{tecnico}</Text>
+          {fecha && (
+            <View style={styles.dateRow}>
+              <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
+              <Text style={styles.dateText}>{fecha}</Text>
+            </View>
+          )}
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </View>
       </TouchableOpacity>
     );
   }
@@ -75,57 +139,185 @@ export default function MyJobsScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  const mensajeVacio = {
+    todos: 'Aún no tienes trabajos. ¡Busca un técnico y crea tu primera solicitud!',
+    activos: 'No tienes trabajos en curso.',
+    historial: 'Aún no tienes trabajos finalizados o cancelados.',
+  }[filtro];
+
   return (
-    <FlatList
-      data={jobs}
-      keyExtractor={(item) => item.id}
-      renderItem={renderJob}
-      contentContainerStyle={styles.list}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={loadJobs} />
-      }
-      ListEmptyComponent={
-        <View style={styles.center}>
-          <Text style={styles.emptyIcon}>📋</Text>
-          <Text style={styles.emptyText}>
-            Aún no tienes trabajos. ¡Busca un técnico y crea tu primera solicitud!
-          </Text>
-        </View>
-      }
-    />
+    <View style={styles.screen}>
+      {/* ---------- Filtros ---------- */}
+      <View style={styles.filters}>
+        {FILTROS.map((f) => {
+          const activo = filtro === f.key;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.filterChip, activo && styles.filterChipActive]}
+              onPress={() => setFiltro(f.key)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.filterText, activo && styles.filterTextActive]}>
+                {f.label}
+              </Text>
+              <View style={[styles.countPill, activo && styles.countPillActive]}>
+                <Text style={[styles.countText, activo && styles.countTextActive]}>
+                  {conteos[f.key]}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* ---------- Lista ---------- */}
+      <FlatList
+        data={jobsFiltrados}
+        keyExtractor={(item) => item.id}
+        renderItem={renderJob}
+        contentContainerStyle={styles.list}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
+          />
+        }
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <Ionicons name="clipboard-outline" size={36} color={colors.primary} />
+            </View>
+            <Text style={styles.emptyText}>{mensajeVacio}</Text>
+          </View>
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { padding: 16, flexGrow: 1 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  cardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  screen: { flex: 1, backgroundColor: colors.backgroundAlt },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: colors.backgroundAlt,
   },
-  category: { fontSize: 15, fontWeight: '600' },
-  badge: { borderRadius: 12, paddingVertical: 4, paddingHorizontal: 10 },
-  badgeText: { fontSize: 12, fontWeight: '600' },
-  description: { fontSize: 14, color: '#444', marginBottom: 8 },
-  technician: { fontSize: 13, color: '#666' },
-  emptyIcon: { fontSize: 40, marginBottom: 8 },
-  emptyText: { fontSize: 16, color: '#666', textAlign: 'center' },
+
+  // Filtros
+  filters: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingVertical: 6,
+    paddingLeft: spacing.sm + 6,
+    paddingRight: 6,
+  },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterText: { fontSize: fontSize.sm, fontWeight: '600', color: colors.text },
+  filterTextActive: { color: colors.white },
+  countPill: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.full,
+    backgroundColor: colors.backgroundAlt,
+    alignItems: 'center',
+  },
+  countPillActive: { backgroundColor: 'rgba(255,255,255,0.25)' },
+  countText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.textMuted },
+  countTextActive: { color: colors.white },
+
+  // Lista y tarjetas
+  list: { padding: spacing.md, paddingTop: spacing.sm, flexGrow: 1 },
+  card: {
+    backgroundColor: colors.background,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm + 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  catIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: radius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  category: { flex: 1, fontSize: fontSize.md, fontWeight: '700', color: colors.text },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderRadius: radius.full,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm + 2,
+  },
+  badgeText: { fontSize: fontSize.xs, fontWeight: '700' },
+  description: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    lineHeight: 20,
+    marginTop: spacing.sm + 4,
+    marginBottom: spacing.sm + 4,
+  },
+  cardBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingTop: spacing.sm + 4,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  miniAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniAvatarText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.primary },
+  technician: { flex: 1, fontSize: fontSize.sm, fontWeight: '600', color: colors.text },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  dateText: { fontSize: fontSize.xs, color: colors.textMuted },
+
+  // Vacio
+  empty: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.full,
+    backgroundColor: colors.primarySoft,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyText: {
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
 });
