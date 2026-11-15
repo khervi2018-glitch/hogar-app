@@ -1,11 +1,14 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserType } from '../entities/user.entity';
 
+// Tipos que se pueden elegir al registrarse.
+// "admin" queda fuera a propósito: un admin solo se crea por base de datos.
+const TIPOS_REGISTRO = [UserType.CLIENTE, UserType.TECNICO];
 
 export class CreateUserDto {
-  @ApiProperty({ enum: UserType, example: UserType.CLIENTE })
-  @IsEnum(UserType)
+  @ApiProperty({ enum: TIPOS_REGISTRO, example: UserType.CLIENTE })
+  @IsIn(TIPOS_REGISTRO, { message: 'tipo debe ser cliente o tecnico' })
   tipo: UserType;
 
   @ApiProperty({ example: 'Juan Pérez' })

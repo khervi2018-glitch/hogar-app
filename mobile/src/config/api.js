@@ -1,5 +1,5 @@
 // IP local de la PC (la que muestra Metro). Celular y PC en la misma WiFi.
-//export const API_URL = 'http://10.242.44.22:3000';
+export const API_URL = 'http://10.22.41.210:3000';
 //export const API_URL = 'http://192.168.18.116:3000';
-export const API_URL = 'http://192.168.18.237:3000';   //SAN JUAN
+//export const API_URL = 'http://192.168.18.162:3000';   //SAN JUAN
 //export const API_URL = 'http://192.168.18.115:3000';   // CALLAO
