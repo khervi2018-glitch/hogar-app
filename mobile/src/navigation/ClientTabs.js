@@ -1,48 +1,37 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
 
 import HomeScreen from '../screens/HomeScreen';
 import MyJobsScreen from '../screens/MyJobsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatsPlaceholderScreen from '../screens/ChatsPlaceholderScreen';
+import { tabIcon, tabScreenOptions } from './tabTheme';
+import { colors } from '../theme/colors';
 
 const Tab = createBottomTabNavigator();
 
-// Helper: icono de pestaña con emoji
-function tabIcon(emoji) {
-  return ({ focused }) => (
-    <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
-  );
-}
-
 export default function ClientTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: '#2563eb',
-        tabBarInactiveTintColor: '#9ca3af',
-      }}
-    >
+    <Tab.Navigator screenOptions={tabScreenOptions(colors.primary)}>
       <Tab.Screen
         name="Inicio"
         component={HomeScreen}
-        options={{ tabBarIcon: tabIcon('🏠'), title: 'CHAMBA' }}
+        options={{ tabBarIcon: tabIcon('home'), title: 'CHAMBA', tabBarLabel: 'Inicio' }}
       />
       <Tab.Screen
         name="MisTrabajos"
         component={MyJobsScreen}
-        options={{ tabBarIcon: tabIcon('📋'), title: 'Mis trabajos', tabBarLabel: 'Trabajos' }}
+        options={{ tabBarIcon: tabIcon('clipboard'), title: 'Mis trabajos', tabBarLabel: 'Trabajos' }}
       />
       <Tab.Screen
         name="Chats"
         component={ChatsPlaceholderScreen}
-        options={{ tabBarIcon: tabIcon('💬'), title: 'Chats' }}
+        options={{ tabBarIcon: tabIcon('chatbubbles'), title: 'Chats' }}
       />
       <Tab.Screen
         name="Perfil"
         component={ProfileScreen}
-        options={{ tabBarIcon: tabIcon('👤'), title: 'Mi perfil' }}
+        options={{ tabBarIcon: tabIcon('person'), title: 'Mi perfil', tabBarLabel: 'Perfil' }}
       />
     </Tab.Navigator>
   );

@@ -17,6 +17,7 @@ import { useHeaderHeight } from '@react-navigation/elements';
 import { createJob } from '../services/jobsService';
 import { colors, spacing, radius, fontSize } from '../theme/colors';
 import { getCategoryIcon } from '../theme/categoryIcons';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 
 const MAX_DESCRIPCION = 500;
 
@@ -26,6 +27,7 @@ export default function CreateJobScreen({ route, navigation }) {
 
   const headerHeight = useHeaderHeight();
   const scrollRef = useRef(null);
+  const keyboardHeight = useKeyboardHeight();
   const categorias = technician.categorias ?? [];
   const nombre = technician.user?.nombre ?? 'Técnico';
   const rating = Number(technician.calificacionPromedio ?? 0);
@@ -82,11 +84,7 @@ export default function CreateJobScreen({ route, navigation }) {
   }
 
   return (
-        <KeyboardAvoidingView
-      style={styles.screen}
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? headerHeight : 0}
-    >
+    <View style={[styles.screen, { paddingBottom: keyboardHeight }]}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={styles.content}
@@ -198,7 +196,12 @@ export default function CreateJobScreen({ route, navigation }) {
       </ScrollView>
 
       {/* ---------- Boton fijo ---------- */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+            <View
+        style={[
+          styles.footer,
+          { paddingBottom: keyboardHeight > 0 ? spacing.sm + 4 : insets.bottom + spacing.md },
+        ]}
+      >
         <TouchableOpacity
           style={[styles.button, submitting && styles.buttonDisabled]}
           activeOpacity={0.85}
@@ -215,7 +218,7 @@ export default function CreateJobScreen({ route, navigation }) {
           )}
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
