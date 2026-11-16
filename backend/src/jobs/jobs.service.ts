@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Job, JobStatus, PaymentStatus } from './entities/job.entity';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
@@ -72,6 +72,24 @@ export class JobsService {
   findAll() {
     return this.repo.find({
       //relations: { cliente: true, tecnico: true, categoria: true },
+      relations: { cliente: true, tecnico: { user: true }, categoria: true },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+    /**
+   * Trabajos del usuario segun el rol con el que mira la app:
+   *  - cliente: los que el pidio
+   *  - tecnico: los que le pidieron a su perfil de tecnico
+   */
+  findMine(userId: string, rol: 'cliente' | 'tecnico') {
+    const where: FindOptionsWhere<Job> =
+      rol === 'tecnico'
+        ? { tecnico: { user: { id: userId } } }
+        : { clienteId: userId };
+
+    return this.repo.find({
+      where,
       relations: { cliente: true, tecnico: { user: true }, categoria: true },
       order: { createdAt: 'DESC' },
     });

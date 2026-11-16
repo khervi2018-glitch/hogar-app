@@ -17,7 +17,7 @@ export default function TechnicianRequestsScreen({ navigation }) {
 
   async function load() {
     try {
-      const all = await getMyJobs();
+      const all = await getMyJobs('tecnico');
       // Solo los pendientes (esperando que el tecnico acepte)
       setRequests(all.filter((j) => j.estado === 'pendiente'));
     } catch (e) {

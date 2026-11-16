@@ -11,6 +11,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { getMyJobs } from '../services/jobsService';
+import { useAuth } from '../context/AuthContext';
 import { colors, spacing, radius, fontSize } from '../theme/colors';
 import { getCategoryIcon } from '../theme/categoryIcons';
 
@@ -49,10 +50,12 @@ export default function MyJobsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filtro, setFiltro] = useState('todos');
+  const { mode } = useAuth(); // 'cliente' | 'tecnico'
+  const esTecnico = mode === 'tecnico';
 
   async function loadJobs() {
     try {
-      const data = await getMyJobs();
+      const data = await getMyJobs(mode);
       setJobs(data);
     } catch (error) {
       console.log('Error cargando jobs:', error.response?.data ?? error.message);
@@ -71,7 +74,7 @@ export default function MyJobsScreen({ navigation }) {
   useFocusEffect(
     useCallback(() => {
       loadJobs();
-    }, []),
+    }, [mode]),
   );
 
   const conteos = useMemo(
@@ -91,7 +94,11 @@ export default function MyJobsScreen({ navigation }) {
   function renderJob({ item }) {
     const estado = ESTADOS[item.estado] ?? ESTADOS.pendiente;
     const { icon, color } = getCategoryIcon(item.categoria?.nombre);
-    const tecnico = item.tecnico?.user?.nombre ?? 'Técnico';
+    //const tecnico = item.tecnico?.user?.nombre ?? 'Técnico';
+        // En modo tecnico mostramos al cliente; en modo cliente, al tecnico
+    const persona = esTecnico
+      ? item.cliente?.nombre ?? 'Cliente'
+      : item.tecnico?.user?.nombre ?? 'Técnico';
     const fecha = formatearFecha(item.createdAt);
 
     return (
@@ -121,9 +128,9 @@ export default function MyJobsScreen({ navigation }) {
 
         <View style={styles.cardBottom}>
           <View style={styles.miniAvatar}>
-            <Text style={styles.miniAvatarText}>{tecnico.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.miniAvatarText}>{persona.charAt(0).toUpperCase()}</Text>
           </View>
-          <Text style={styles.technician} numberOfLines={1}>{tecnico}</Text>
+          <Text style={styles.technician} numberOfLines={1}>{persona}</Text>
           {fecha && (
             <View style={styles.dateRow}>
               <Ionicons name="calendar-outline" size={13} color={colors.textMuted} />
@@ -145,7 +152,10 @@ export default function MyJobsScreen({ navigation }) {
   }
 
   const mensajeVacio = {
-    todos: 'Aún no tienes trabajos. ¡Busca un técnico y crea tu primera solicitud!',
+    //todos: 'Aún no tienes trabajos. ¡Busca un técnico y crea tu primera solicitud!',
+    todos: esTecnico
+      ? 'Aún no te han solicitado trabajos.'
+      : 'Aún no tienes trabajos. ¡Busca un técnico y crea tu primera solicitud!',
     activos: 'No tienes trabajos en curso.',
     historial: 'Aún no tienes trabajos finalizados o cancelados.',
   }[filtro];

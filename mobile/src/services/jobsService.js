@@ -27,18 +27,16 @@ export async function createJob({
   return response.data;
 }
 
-// Trae los jobs y filtra los del usuario logueado (como cliente o tecnico)
-export async function getMyJobs() {
+// Trae los trabajos del usuario segun el modo: 'cliente' o 'tecnico'
+export async function getMyJobs(rol) {
   const token = await SecureStore.getItemAsync('token');
-  const userId = getUserIdFromToken(token);
 
-  const response = await axios.get(`${API_URL}/jobs`, {
+  const response = await axios.get(`${API_URL}/jobs/mine`, {
+    params: { rol },
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  return response.data.filter(
-    (job) => job.clienteId === userId || job.tecnico?.user?.id === userId,
-  );
+  return response.data;
 }
 
 export async function getJobById(jobId) {
