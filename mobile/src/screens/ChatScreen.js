@@ -126,7 +126,7 @@ export default function ChatScreen({ route, navigation }) {
 
   return (
     // El espacio de abajo = altura del teclado, asi la caja de texto queda encima
-    <View style={[styles.container, { paddingBottom: keyboardHeight }]}>
+      <View style={[styles.container, { paddingBottom: tecladoAbierto ? keyboardHeight + 12 : 0 }]}>
       {status && (
         <View style={styles.statusBar}>
           {status === 'Conectando...' && (
