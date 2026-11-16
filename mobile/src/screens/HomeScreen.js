@@ -13,11 +13,21 @@ import { useFocusEffect } from '@react-navigation/native';
 import { getCategories, getTopTechnicians } from '../services/techniciansService';
 import { getCategoryIcon } from '../theme/categoryIcons';
 import { colors, spacing, radius, fontSize } from '../theme/colors';
+import { useAuth } from '../context/AuthContext';
+import { getMe } from '../services/usersService';
 
 export default function HomeScreen({ navigation }) {
   const [categories, setCategories] = useState([]);
   const [topTechs, setTopTechs] = useState([]);
   const [loading, setLoading] = useState(true);
+    const [nombre, setNombre] = useState('');
+  const { isTechnician } = useAuth();
+
+  useEffect(() => {
+    getMe()
+      .then((u) => setNombre(u?.nombre?.split(' ')[0] ?? ''))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     Promise.all([getCategories(), getTopTechnicians()])
@@ -41,7 +51,7 @@ export default function HomeScreen({ navigation }) {
     >
       {/* Saludo */}
       <View style={styles.header}>
-        <Text style={styles.greeting}>Hola 👋</Text>
+        <Text style={styles.greeting}>Hola{nombre ? `, ${nombre}` : ''} 👋</Text>
         <Text style={styles.question}>¿Qué necesitas resolver hoy?</Text>
       </View>
 
@@ -109,8 +119,8 @@ export default function HomeScreen({ navigation }) {
                 <View style={styles.techRating}>
                   <Ionicons name="star" size={13} color="#f59e0b" />
                   <Text style={styles.techRatingText}>
-                    {tech.calificacionPromedio > 0
-                      ? tech.calificacionPromedio.toFixed(1)
+                    {Number(tech.calificacionPromedio) > 0
+                      ? Number(tech.calificacionPromedio).toFixed(1)
                       : 'Nuevo'}
                   </Text>
                 </View>
@@ -150,6 +160,8 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* Banner: hazte tecnico */}
+            {/* Banner: hazte tecnico (solo si aun no lo es) */}
+      {!isTechnician && (
       <TouchableOpacity
         style={styles.techBanner}
         onPress={() => navigation.navigate('BecomeTechnician')}
@@ -159,8 +171,9 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.techBannerTitle}>¿Ofreces servicios?</Text>
           <Text style={styles.techBannerSub}>Únete como técnico y recibe trabajos</Text>
         </View>
-        <Ionicons name="chevron-forward" size={22} color={colors.tech} />
+                <Ionicons name="chevron-forward" size={22} color={colors.tech} />
       </TouchableOpacity>
+      )}
     </ScrollView>
   );
 }

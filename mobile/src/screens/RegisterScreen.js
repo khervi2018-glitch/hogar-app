@@ -1,24 +1,34 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
   Alert,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { register } from '../services/authService';
 import { useAuth } from '../context/AuthContext';
+import FormInput from '../components/FormInput';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
+import { colors, spacing, radius, fontSize } from '../theme/colors';
 
 export default function RegisterScreen({ navigation }) {
   const { signIn } = useAuth();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [telefono, setTelefono] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
 
   async function handleRegister() {
     if (!nombre || !email || !password) {
@@ -38,7 +48,7 @@ export default function RegisterScreen({ navigation }) {
         password,
         telefono: telefono.trim(),
       });
-      // Registro exitoso → login automatico para entrar directo
+      // Registro exitoso → login automatico
       await signIn(email.trim().toLowerCase(), password);
     } catch (error) {
       const status = error.response?.status;
@@ -56,81 +66,127 @@ export default function RegisterScreen({ navigation }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Crear cuenta</Text>
-      <Text style={styles.subtitle}>Únete a CHAMBA</Text>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: keyboardHeight + spacing.lg }}
+      keyboardShouldPersistTaps="handled"
+    >
+      {/* ---------- Cabecera ---------- */}
+      <View style={[styles.hero, { paddingTop: insets.top + spacing.md }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.back}>
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Crea tu cuenta</Text>
+        <Text style={styles.subtitle}>Únete a CHAMBA en menos de un minuto</Text>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Nombre completo"
-        value={nombre}
-        onChangeText={setNombre}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Teléfono (opcional)"
-        value={telefono}
-        onChangeText={setTelefono}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Contraseña (mín. 6 caracteres)"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      {/* ---------- Formulario ---------- */}
+      <View style={styles.formCard}>
+        <FormInput
+          label="Nombre completo"
+          icon="person-outline"
+          placeholder="Ej: Juan Pérez"
+          value={nombre}
+          onChangeText={setNombre}
+          autoCapitalize="words"
+        />
+        <FormInput
+          label="Email"
+          icon="mail-outline"
+          placeholder="tucorreo@ejemplo.com"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+        <FormInput
+          label="Teléfono (opcional)"
+          icon="call-outline"
+          placeholder="Ej: 987654321"
+          value={telefono}
+          onChangeText={setTelefono}
+          keyboardType="phone-pad"
+        />
+        <FormInput
+          label="Contraseña"
+          icon="lock-closed-outline"
+          placeholder="Mínimo 6 caracteres"
+          value={password}
+          onChangeText={setPassword}
+          secure
+        />
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={handleRegister}
-        disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Crear cuenta</Text>
-        )}
-      </TouchableOpacity>
+        <View style={styles.note}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.primaryDark} />
+          <Text style={styles.noteText}>
+            Si ofreces servicios, podrás activar tu perfil de técnico después, desde Mi perfil.
+          </Text>
+        </View>
 
-      <TouchableOpacity
-        style={styles.linkButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.linkText}>¿Ya tienes cuenta? Inicia sesión</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, submitting && { opacity: 0.7 }]}
+          onPress={handleRegister}
+          disabled={submitting}
+          activeOpacity={0.85}
+        >
+          {submitting ? (
+            <ActivityIndicator color={colors.white} />
+          ) : (
+            <Text style={styles.buttonText}>Crear cuenta</Text>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.linkRow}>
+          <Text style={styles.linkMuted}>¿Ya tienes cuenta? </Text>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.link}>Inicia sesión</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#fff' },
-  title: { fontSize: 28, fontWeight: 'bold', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 28 },
-  input: {
+  screen: { flex: 1, backgroundColor: colors.backgroundAlt },
+  hero: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl + spacing.lg,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  back: { alignSelf: 'flex-start', marginBottom: spacing.md },
+  title: { color: colors.white, fontSize: fontSize.xxl, fontWeight: '800' },
+  subtitle: { color: colors.white, opacity: 0.9, fontSize: fontSize.md, marginTop: 4 },
+  formCard: {
+    backgroundColor: colors.background,
+    marginHorizontal: spacing.md,
+    marginTop: -spacing.xl,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 12,
-    fontSize: 16,
+    borderColor: colors.border,
   },
+  note: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.md,
+    padding: spacing.sm + 4,
+    marginBottom: spacing.md,
+  },
+  noteText: { flex: 1, fontSize: fontSize.xs + 1, color: colors.text, lineHeight: 18 },
   button: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 16,
+    backgroundColor: colors.primary,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
     alignItems: 'center',
-    marginTop: 8,
+    minHeight: 54,
+    justifyContent: 'center',
   },
-  buttonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
-  linkButton: { marginTop: 20, alignItems: 'center' },
-  linkText: { color: '#2563eb', fontSize: 15 },
+  buttonText: { color: colors.white, fontSize: fontSize.md + 1, fontWeight: '700' },
+  linkRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
+  linkMuted: { color: colors.textMuted, fontSize: fontSize.sm + 1 },
+  link: { color: colors.primary, fontSize: fontSize.sm + 1, fontWeight: '700' },
 });
