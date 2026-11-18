@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import MyJobsScreen from '../screens/MyJobsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import ChatsPlaceholderScreen from '../screens/ChatsPlaceholderScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
 import { tabIcon, tabScreenOptions } from './tabTheme';
 import { colors } from '../theme/colors';
 
@@ -25,7 +25,7 @@ export default function ClientTabs() {
       />
       <Tab.Screen
         name="Chats"
-        component={ChatsPlaceholderScreen}
+        component={ConversationsScreen}
         options={{ tabBarIcon: tabIcon('chatbubbles'), title: 'Chats' }}
       />
       <Tab.Screen

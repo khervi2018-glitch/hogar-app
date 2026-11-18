@@ -48,3 +48,13 @@ export async function getChatHistory(jobId) {
   });
   return response.data;
 }
+
+// Lista de conversaciones segun el modo: 'cliente' o 'tecnico'
+export async function getConversations(rol) {
+  const token = await SecureStore.getItemAsync('token');
+  const response = await axios.get(`${API_URL}/chat/conversations`, {
+    params: { rol },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.data;
+}

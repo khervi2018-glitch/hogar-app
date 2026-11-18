@@ -3,7 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import TechnicianRequestsScreen from '../screens/TechnicianRequestsScreen';
 import MyJobsScreen from '../screens/MyJobsScreen';
-import ChatsPlaceholderScreen from '../screens/ChatsPlaceholderScreen';
+import ConversationsScreen from '../screens/ConversationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { tabIcon, tabScreenOptions } from './tabTheme';
 import { colors } from '../theme/colors';
@@ -26,7 +26,7 @@ export default function TechnicianTabs() {
       />
       <Tab.Screen
         name="ChatsTec"
-        component={ChatsPlaceholderScreen}
+        component={ConversationsScreen}
         options={{ tabBarIcon: tabIcon('chatbubbles'), title: 'Chats' }}
       />
       <Tab.Screen
