@@ -4,11 +4,12 @@ import { UserType } from '../entities/user.entity';
 
 // Tipos que se pueden elegir al registrarse.
 // "admin" queda fuera a propósito: un admin solo se crea por base de datos.
-const TIPOS_REGISTRO = [UserType.CLIENTE, UserType.TECNICO];
+// Todos se registran como cliente; ser tecnico se activa luego desde la app
+const TIPOS_REGISTRO = [UserType.CLIENTE];
 
 export class CreateUserDto {
   @ApiProperty({ enum: TIPOS_REGISTRO, example: UserType.CLIENTE })
-  @IsIn(TIPOS_REGISTRO, { message: 'tipo debe ser cliente o tecnico' })
+  @IsIn(TIPOS_REGISTRO, { message: 'el registro solo admite tipo cliente' })
   tipo: UserType;
 
   @ApiProperty({ example: 'Juan Pérez' })
