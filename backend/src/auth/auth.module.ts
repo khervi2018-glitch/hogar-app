@@ -20,8 +20,8 @@ import { JwtStrategy } from './jwt.strategy';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') as any,
-        },
+          // Si falta en el .env, 7 dias por defecto (nunca tokens eternos)
+          expiresIn: (configService.get<string>('JWT_EXPIRES_IN') ?? '7d') as any,        },
       }),
     }),
   ],

@@ -8,6 +8,9 @@ import {
   Delete,
   Query,
   UseGuards,
+  Req,
+  ParseUUIDPipe,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { TechnicianProfilesService } from './technician-profiles.service';
@@ -15,6 +18,9 @@ import { CreateTechnicianProfileDto } from './dto/create-technician-profile.dto'
 import { UpdateTechnicianProfileDto } from './dto/update-technician-profile.dto';
 import { SearchNearbyDto } from './dto/search-nearby.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UserType } from '../users/entities/user.entity';
+
+type AuthRequest = { user: { userId: string; email: string; tipo: string } };
 
 @ApiTags('Technician Profiles')
 @Controller('technician-profiles')
@@ -23,14 +29,22 @@ export class TechnicianProfilesController {
     private readonly technicianProfilesService: TechnicianProfilesService,
   ) {}
 
-  @ApiOperation({
-    summary: 'Crear el perfil de técnico de un usuario (requiere autenticación)',
-  })
+  /** Solo el dueño del perfil o un admin. */
+  private async assertOwnerOrAdmin(profileId: string, user: AuthRequest['user']) {
+    const profile: any = await this.technicianProfilesService.findOne(profileId);
+    const ownerId = profile.user?.id ?? profile.userId;
+    if (ownerId !== user.userId && user.tipo !== UserType.ADMIN) {
+      throw new ForbiddenException('Solo puedes modificar tu propio perfil de técnico');
+    }
+  }
+
+  @ApiOperation({ summary: 'Crear MI perfil de técnico (el usuario sale del token)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createTechnicianProfileDto: CreateTechnicianProfileDto) {
-    return this.technicianProfilesService.create(createTechnicianProfileDto);
+  create(@Body() dto: CreateTechnicianProfileDto, @Req() req: AuthRequest) {
+    // Se ignora el userId del body: el perfil SIEMPRE es del usuario logueado
+    return this.technicianProfilesService.create({ ...dto, userId: req.user.userId });
   }
 
   @ApiOperation({ summary: 'Listar todos los perfiles de técnico' })
@@ -40,8 +54,7 @@ export class TechnicianProfilesController {
   }
 
   @ApiOperation({
-    summary:
-      'Buscar técnicos cercanos a una ubicación, opcionalmente filtrado por categoría',
+    summary: 'Buscar técnicos cercanos a una ubicación, opcionalmente filtrado por categoría',
   })
   @Get('search/nearby')
   findNearby(@Query() query: SearchNearbyDto) {
@@ -54,30 +67,29 @@ export class TechnicianProfilesController {
 
   @ApiOperation({ summary: 'Obtener un perfil de técnico por id' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.technicianProfilesService.findOne(id);
   }
 
-  @ApiOperation({
-    summary: 'Actualizar un perfil de técnico (requiere autenticación)',
-  })
+  @ApiOperation({ summary: 'Actualizar MI perfil de técnico (dueño o admin)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateTechnicianProfileDto: UpdateTechnicianProfileDto,
+  async update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTechnicianProfileDto,
+    @Req() req: AuthRequest,
   ) {
-    return this.technicianProfilesService.update(id, updateTechnicianProfileDto);
+    await this.assertOwnerOrAdmin(id, req.user);
+    return this.technicianProfilesService.update(id, dto);
   }
 
-  @ApiOperation({
-    summary: 'Eliminar un perfil de técnico (requiere autenticación)',
-  })
+  @ApiOperation({ summary: 'Eliminar MI perfil de técnico (dueño o admin)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  async remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
+    await this.assertOwnerOrAdmin(id, req.user);
     return this.technicianProfilesService.remove(id);
   }
 }

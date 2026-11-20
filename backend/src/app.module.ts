@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
@@ -14,8 +15,13 @@ import { RatingsModule } from './ratings/ratings.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // hace que las variables de entorno estén disponibles en toda la app
+      isGlobal: true, // variables de entorno disponibles en toda la app
     }),
+
+    // Limite base de peticiones por IP. Cada endpoint sensible
+    // (login, registro) define su propio limite mas estricto.
+    ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
+
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -26,8 +32,10 @@ import { RatingsModule } from './ratings/ratings.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true, // carga automáticamente las entidades que vayamos creando
-        synchronize: true, // ¡SOLO PARA DESARROLLO! crea/actualiza tablas automáticamente
+        autoLoadEntities: true,
+        // Solo en desarrollo: en produccion podria borrar columnas con datos.
+        // En produccion usaremos migraciones (Fase B).
+        synchronize: configService.get<string>('NODE_ENV') !== 'production',
       }),
     }),
     UsersModule,

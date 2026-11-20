@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import * as SecureStore from 'expo-secure-store';
+import axios from 'axios';
 import { login as loginRequest } from '../services/authService';
 import { getMyTechnicianProfile } from '../services/techniciansService';
 
@@ -27,6 +28,23 @@ export function AuthProvider({ children }) {
       }
     }
     loadToken();
+  }, []);
+  
+    // Si el backend responde 401 (token vencido o invalido), cerrar sesion automaticamente.
+  // Se excluye el login, donde un 401 solo significa "contraseña incorrecta".
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const status = error.response?.status;
+        const url = error.config?.url ?? '';
+        if (status === 401 && !url.includes('/auth/login')) {
+          await signOut();
+        }
+        return Promise.reject(error);
+      },
+    );
+    return () => axios.interceptors.response.eject(interceptor);
   }, []);
 
   async function signIn(email, password) {

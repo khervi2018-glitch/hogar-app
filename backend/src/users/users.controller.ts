@@ -12,6 +12,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -45,7 +46,10 @@ export class UsersController {
 
   // ---------- Endpoints ----------
 
-  @ApiOperation({ summary: 'Registrar un nuevo usuario (cliente o técnico)' })
+  // Maximo 5 registros cada 10 minutos por IP: evita la creacion masiva de cuentas
+  @ApiOperation({ summary: 'Registrar un nuevo usuario (siempre como cliente)' })
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 600_000 } })
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);

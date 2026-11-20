@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/entities/user.entity';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -45,5 +46,29 @@ export class AuthService {
         tipo: user.tipo,
       },
     };
+  }
+    async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.usersRepo
+      .createQueryBuilder('u')
+      .addSelect('u.passwordHash')
+      .where('u.id = :id', { id: userId })
+      .getOne();
+
+    if (!user || !user.passwordHash) {
+      throw new UnauthorizedException('Usuario no válido');
+    }
+
+    const actualValida = await bcrypt.compare(dto.passwordActual, user.passwordHash);
+    if (!actualValida) {
+      throw new UnauthorizedException('La contraseña actual no es correcta');
+    }
+
+    if (dto.passwordActual === dto.passwordNueva) {
+      throw new BadRequestException('La nueva contraseña debe ser distinta a la actual');
+    }
+
+    const nuevoHash = await bcrypt.hash(dto.passwordNueva, 10);
+    await this.usersRepo.update(user.id, { passwordHash: nuevoHash });
+    return { message: 'Contraseña actualizada' };
   }
 }
