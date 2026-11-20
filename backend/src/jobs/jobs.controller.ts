@@ -92,24 +92,38 @@ export class JobsController {
     return job;
   }
 
-  @ApiOperation({ summary: 'Actualizar datos generales del trabajo' })
+  @ApiOperation({ summary: 'Actualizar datos generales del trabajo (solo admin)' })
   @Patch(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() updateJobDto: UpdateJobDto) {
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() updateJobDto: UpdateJobDto,
+    @Req() req: AuthRequest,
+  ) {
+    if (!this.isAdmin(req.user)) {
+      throw new ForbiddenException('Solo un administrador puede editar trabajos');
+    }
     return this.jobsService.update(id, updateJobDto);
   }
 
-  @ApiOperation({ summary: 'Cambiar el estado del trabajo (respeta las transiciones válidas)' })
+  @ApiOperation({ summary: 'Cambiar el estado del trabajo (según rol y transiciones válidas)' })
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updateJobStatusDto: UpdateJobStatusDto,
+    @Req() req: AuthRequest,
   ) {
-    return this.jobsService.updateStatus(id, updateJobStatusDto);
+    return this.jobsService.updateStatus(id, updateJobStatusDto, {
+      userId: req.user.userId,
+      esAdmin: this.isAdmin(req.user),
+    });
   }
 
-  @ApiOperation({ summary: 'Eliminar un trabajo' })
+  @ApiOperation({ summary: 'Eliminar un trabajo (solo admin)' })
   @Delete(':id')
-  remove(@Param('id', ParseUUIDPipe) id: string) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthRequest) {
+    if (!this.isAdmin(req.user)) {
+      throw new ForbiddenException('Solo un administrador puede eliminar trabajos');
+    }
     return this.jobsService.remove(id);
   }
 

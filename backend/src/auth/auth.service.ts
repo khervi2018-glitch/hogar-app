@@ -15,12 +15,17 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    // Traemos el usuario incluyendo el passwordHash, que normalmente
-    // está oculto con @Exclude(). Para esto usamos el QueryBuilder
-    // que ignora el decorador @Exclude (ese solo aplica a la respuesta HTTP).
-    const user = await this.usersRepo.findOne({ where: { email: dto.email } });
+    // QueryBuilder + addSelect: trae el passwordHash aunque la columna
+    // este marcada como oculta (select: false) en la entidad.
+    // El email se compara sin importar mayusculas/minusculas.
+    const user = await this.usersRepo
+      .createQueryBuilder('u')
+      .addSelect('u.passwordHash')
+      .where('LOWER(u.email) = LOWER(:email)', { email: dto.email.trim() })
+      .getOne();
 
-    if (!user) {
+    // Mismo mensaje en todos los casos: no revelamos si el email existe
+    if (!user || !user.passwordHash || !dto.password) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
 

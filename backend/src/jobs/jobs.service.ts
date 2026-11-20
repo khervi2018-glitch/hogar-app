@@ -24,6 +24,12 @@ const TRANSICIONES_VALIDAS: Record<JobStatus, JobStatus[]> = {
   [JobStatus.CANCELADO]: [],
 };
 
+// Quien hace la peticion (lo arma el controller desde el token)
+export interface Actor {
+  userId: string;
+  esAdmin: boolean;
+}
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -45,9 +51,15 @@ export class JobsService {
 
     const tecnico = await this.techProfilesRepo.findOne({
       where: { id: dto.technicianProfileId },
+      relations: { user: true, categorias: true },
     });
     if (!tecnico) {
       throw new NotFoundException('Perfil de técnico no encontrado');
+    }
+
+    // No se puede contratar uno mismo
+    if (tecnico.user?.id === dto.clienteId) {
+      throw new BadRequestException('No puedes solicitarte un trabajo a ti mismo');
     }
 
     const categoria = await this.categoriesRepo.findOne({
@@ -55,6 +67,12 @@ export class JobsService {
     });
     if (!categoria) {
       throw new NotFoundException('Categoría de servicio no encontrada');
+    }
+
+    // La categoria debe ser una de las que ofrece el tecnico
+    const ofreceCategoria = tecnico.categorias?.some((c) => c.id === dto.serviceCategoryId);
+    if (!ofreceCategoria) {
+      throw new BadRequestException('El técnico no ofrece esa categoría de servicio');
     }
 
     const job = this.repo.create({
@@ -71,13 +89,12 @@ export class JobsService {
 
   findAll() {
     return this.repo.find({
-      //relations: { cliente: true, tecnico: true, categoria: true },
       relations: { cliente: true, tecnico: { user: true }, categoria: true },
       order: { createdAt: 'DESC' },
     });
   }
 
-    /**
+  /**
    * Trabajos del usuario segun el rol con el que mira la app:
    *  - cliente: los que el pidio
    *  - tecnico: los que le pidieron a su perfil de tecnico
@@ -98,7 +115,6 @@ export class JobsService {
   async findOne(id: string) {
     const job = await this.repo.findOne({
       where: { id },
-      //relations: { cliente: true, tecnico: true, categoria: true },
       relations: { cliente: true, tecnico: { user: true }, categoria: true },
     });
     if (!job) {
@@ -113,14 +129,33 @@ export class JobsService {
     return this.repo.save(job);
   }
 
-  async updateStatus(id: string, dto: UpdateJobStatusDto) {
+  async updateStatus(id: string, dto: UpdateJobStatusDto, actor: Actor) {
     const job = await this.findOne(id);
 
+    // ---- Quien puede hacer cada cambio ----
+    if (!actor.esAdmin) {
+      const esCliente = job.clienteId === actor.userId;
+      const esTecnico = job.tecnico?.user?.id === actor.userId;
+
+      if (dto.estado === JobStatus.CANCELADO) {
+        // Cancelar: el cliente o el tecnico del trabajo
+        if (!esCliente && !esTecnico) {
+          throw new ForbiddenException('Solo los participantes pueden cancelar este trabajo');
+        }
+      } else if (!esTecnico) {
+        // Aceptar / iniciar / finalizar: solo el tecnico del trabajo
+        throw new ForbiddenException(
+          `Solo el técnico del trabajo puede cambiarlo a "${dto.estado}"`,
+        );
+      }
+    }
+
+    // ---- Transicion valida ----
     const estadosPermitidos = TRANSICIONES_VALIDAS[job.estado];
     if (!estadosPermitidos.includes(dto.estado)) {
       throw new BadRequestException(
         `No se puede pasar de "${job.estado}" a "${dto.estado}". ` +
-        `Transiciones válidas desde "${job.estado}": ${estadosPermitidos.join(', ') || 'ninguna (estado final)'}`,
+          `Transiciones válidas desde "${job.estado}": ${estadosPermitidos.join(', ') || 'ninguna (estado final)'}`,
       );
     }
 
@@ -144,10 +179,7 @@ export class JobsService {
   async registerPayment(jobId: string, userId: string, metodoPago: string) {
     const job = await this.repo.findOne({
       where: { id: jobId },
-      relations: {
-        cliente: true,
-        tecnico: { user: true },
-      },
+      relations: { cliente: true, tecnico: { user: true } },
     });
 
     if (!job) {
@@ -162,12 +194,9 @@ export class JobsService {
     }
 
     // Solo los participantes pueden registrar el pago
-    const esParticipante =
-      userId === job.clienteId || userId === job.tecnico.user.id;
+    const esParticipante = userId === job.clienteId || userId === job.tecnico.user.id;
     if (!esParticipante) {
-      throw new ForbiddenException(
-        'Solo los participantes del trabajo pueden registrar el pago',
-      );
+      throw new ForbiddenException('Solo los participantes del trabajo pueden registrar el pago');
     }
 
     // No duplicar el registro
