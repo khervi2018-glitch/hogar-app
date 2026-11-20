@@ -29,8 +29,8 @@ export function AuthProvider({ children }) {
     }
     loadToken();
   }, []);
-  
-    // Si el backend responde 401 (token vencido o invalido), cerrar sesion automaticamente.
+
+  // Si el backend responde 401 (token vencido o invalido), cerrar sesion automaticamente.
   // Se excluye el login, donde un 401 solo significa "contraseña incorrecta".
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(

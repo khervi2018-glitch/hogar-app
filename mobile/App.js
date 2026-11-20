@@ -15,6 +15,7 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import BecomeTechnicianScreen from './src/screens/BecomeTechnicianScreen';
 import ClientTabs from './src/navigation/ClientTabs';
 import TechnicianTabs from './src/navigation/TechnicianTabs'; 
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +69,10 @@ function AppNavigator() {
               name="BecomeTechnician"
               component={BecomeTechnicianScreen}
               options={{ title: 'Convertirme en técnico' }}
+            />
+            <Stack.Screen 
+              name="ChangePassword" 
+              component={ChangePasswordScreen} 
             />
             <Stack.Screen
               name="Chat"

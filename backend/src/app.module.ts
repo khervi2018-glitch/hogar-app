@@ -18,25 +18,39 @@ import { RatingsModule } from './ratings/ratings.module';
       isGlobal: true, // variables de entorno disponibles en toda la app
     }),
 
-    // Limite base de peticiones por IP. Cada endpoint sensible
-    // (login, registro) define su propio limite mas estricto.
+    // Limite base de peticiones por IP (login y registro tienen el suyo)
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 60 }]),
 
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_DATABASE'),
-        autoLoadEntities: true,
-        // Solo en desarrollo: en produccion podria borrar columnas con datos.
-        // En produccion usaremos migraciones (Fase B).
-        synchronize: configService.get<string>('NODE_ENV') !== 'production',
-      }),
+      useFactory: (config: ConfigService) => {
+        const isProd = config.get<string>('NODE_ENV') === 'production';
+        const databaseUrl = config.get<string>('DATABASE_URL');
+
+        // Conexion: en la nube llega como una URL (con SSL);
+        // en local, con host/puerto/usuario por separado.
+        const conexion = databaseUrl
+          ? { url: databaseUrl, ssl: { rejectUnauthorized: true } }
+          : {
+              host: config.get<string>('DB_HOST'),
+              port: Number(config.get<string>('DB_PORT') ?? 5432),
+              username: config.get<string>('DB_USERNAME'),
+              password: config.get<string>('DB_PASSWORD'),
+              database: config.get<string>('DB_DATABASE'),
+            };
+
+        return {
+          type: 'postgres' as const,
+          ...conexion,
+          autoLoadEntities: true,
+          // Desarrollo: tablas automaticas. Produccion: NUNCA (puede borrar datos).
+          synchronize: !isProd,
+          // Produccion: aplicar las migraciones pendientes al arrancar
+          migrations: [__dirname + '/database/migrations/*{.ts,.js}'],
+          migrationsRun: isProd,
+        };
+      },
     }),
     UsersModule,
     ServiceCategoriesModule,

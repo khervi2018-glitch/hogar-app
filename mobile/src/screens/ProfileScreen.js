@@ -127,6 +127,18 @@ export default function ProfileScreen({ navigation }) {
         )}
       </View>
 
+      {/* ---------- Seguridad ---------- */}
+      <Text style={styles.sectionTitle}>Seguridad</Text>
+      <View style={styles.card}>
+        <OptionRow
+          icon="lock-closed-outline"
+          color={colors.primary}
+          title="Cambiar contraseña"
+          subtitle="Actualiza tu clave de acceso"
+          onPress={() => navigation.navigate('ChangePassword')}
+        />
+      </View>
+
       {/* ---------- Cerrar sesion ---------- */}
       <TouchableOpacity style={styles.logout} onPress={confirmarSalida} activeOpacity={0.85}>
         <Ionicons name="log-out-outline" size={20} color={colors.danger} />

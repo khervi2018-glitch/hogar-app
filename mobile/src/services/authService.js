@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { API_URL } from '../config/api';
+import * as SecureStore from 'expo-secure-store';
 
 export async function login(email, password) {
   const response = await axios.post(`${API_URL}/auth/login`, {
@@ -19,4 +20,14 @@ export async function register({ nombre, email, password, telefono }) {
     telefono,
   });
     return response.data;
+}
+
+export async function changePassword(passwordActual, passwordNueva) {
+  const token = await SecureStore.getItemAsync('token');
+  const response = await axios.patch(
+    `${API_URL}/auth/password`,
+    { passwordActual, passwordNueva },
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  return response.data;
 }

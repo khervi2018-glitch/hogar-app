@@ -37,11 +37,22 @@ export default function LoginScreen({ navigation }) {
     try {
       await signIn(email.trim().toLowerCase(), password);
       // Si funciona, la navegacion cambia sola (App.js)
-    } catch (error) {
-      const msg =
-        error.response?.status === 401
-          ? 'Email o contraseña incorrectos'
-          : 'No se pudo conectar con el servidor';
+        } catch (error) {
+      const status = error.response?.status;
+      let msg;
+      if (!error.response) {
+        // No hubo respuesta: el celular no llego al backend (IP, Wi-Fi o backend apagado)
+        msg = 'No se pudo conectar con el servidor. Revisa tu conexión.';
+      } else if (status === 401) {
+        msg = 'Email o contraseña incorrectos';
+      } else if (status === 429) {
+        msg = 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.';
+      } else if (status === 400) {
+        msg = 'Revisa el email y la contraseña ingresados';
+      } else {
+        msg = `Ocurrió un error (código ${status}). Intenta de nuevo.`;
+      }
+      console.log('Error login:', status, error.response?.data ?? error.message);
       Alert.alert('Error', msg);
     } finally {
       setSubmitting(false);

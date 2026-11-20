@@ -60,7 +60,9 @@ export class AuthService {
 
     const actualValida = await bcrypt.compare(dto.passwordActual, user.passwordHash);
     if (!actualValida) {
-      throw new UnauthorizedException('La contraseña actual no es correcta');
+      // 400 (no 401): es un dato incorrecto, no una sesion invalida.
+      // Un 401 haria que la app cierre la sesion.
+      throw new BadRequestException('La contraseña actual no es correcta');
     }
 
     if (dto.passwordActual === dto.passwordNueva) {
