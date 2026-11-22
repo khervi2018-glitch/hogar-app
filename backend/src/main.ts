@@ -6,9 +6,15 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const logger = new Logger('Bootstrap');
   const isProd = process.env.NODE_ENV === 'production';
+
+  // En la nube las peticiones pasan por un proxy: confiar en su cabecera
+  // X-Forwarded-For para conocer la IP real (la usa el limite de intentos).
+  if (isProd) {
+    app.set('trust proxy', 1);
+  }
 
   // 1. No arrancar con un secreto JWT debil: con uno corto, se pueden falsificar tokens
   const jwtSecret = process.env.JWT_SECRET ?? '';
